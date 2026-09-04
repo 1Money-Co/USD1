@@ -1,0 +1,91 @@
+name: Semgrep SAST
+
+# Runs on every pull request, plus direct pushes to `main`.
+#
+# The push trigger is not redundant with the PR trigger: 17 of the 22 commits on
+# `main` predate the current PR workflow and landed as direct pushes. Gating only
+# pull_request would leave that path unscanned, and a security gate that a
+# `git push origin main` walks straight past is a gate in name only.
+#
+# Scoped narrower than test.yml (which runs on all pushes) because this scan does
+# not need to re-run on every commit to a feature branch — the PR trigger scans
+# the simulated merge commit, i.e. the code as it would exist after merging, which
+# is what you want to gate on.
+#
+# `workflow_dispatch` is kept so the scan can be run on demand against any branch.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: semgrep-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: Semgrep CE
+    runs-on: ubuntu-latest
+    container:
+      # Pinned by digest, not the mutable `semgrep/semgrep` tag. An upstream
+      # release can change parsing, findings, or CLI behaviour with no change
+      # here — which would defeat the point of pinning the ruleset SHA and could
+      # silently alter historical pass/fail results. Digest resolved from
+      # semgrep/semgrep:1.172.0; bump deliberately and re-run the canary.
+      image: semgrep/semgrep@sha256:65dcd4408adda7c183a6b4550cb1e9b19f7f627a6fbb7e0559bd466bedc44d7b
+    steps:
+      # The workspace is checked out as the runner user but this job's container
+      # runs as root, so without this every git command against it dies with
+      # "detected dubious ownership". That is not just cosmetic: semgrep enumerates
+      # its targets via git, and the scan asserts coverage via `git ls-files`. A
+      # container job that skips this does not scan less — it cannot scan at all.
+      #
+      # The second entry is the rules cache, a nested git repo the scan creates.
+      # The script creates it as root so its ownership should already match, and
+      # in practice only the workspace entry is required — but the two are
+      # independent checks and a blanket safe.directory='*' in a security gate is
+      # the kind of thing nobody should have to argue about in review.
+      - name: Trust the workspace
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/.semgrep-rules"
+
+      # Submodules are deliberately NOT initialized. lib/ is upstream code we do
+      # not control (and .github/secret_scanning.yml already exempts it), the scan
+      # excludes it anyway, and skipping it avoids the private-repo dance that
+      # test.yml has to do for native-token-transfers.
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Fails the build if the ruleset stops detecting planted vulnerabilities.
+      # Without this a misconfigured ruleset reports 0 findings and is
+      # indistinguishable from clean code. A gate that cannot fail is worse than
+      # no gate: it manufactures evidence.
+      - name: Verify ruleset still detects
+        run: ./.github/scripts/security-scan.sh --canary
+
+      # Also asserts scan coverage: every tracked .sol source outside lib/ and
+      # test/ must have been scanned AND parsed. Semgrep counts a file it failed
+      # to parse as "scanned" and still exits 0, so without that assertion a
+      # Solidity syntax construct its grammar does not yet handle would silently
+      # go uninspected.
+      - name: Semgrep scan
+        run: ./.github/scripts/security-scan.sh --sarif semgrep.sarif
+
+      # Retained as the audit record for ISO 27001 (1Money-Co/security#18).
+      # GitHub Code Security is not enabled on this repo, so SARIF cannot be
+      # uploaded to the Security tab — codeql-action/upload-sarif would hard
+      # fail. This artifact plus the job status is the evidence trail.
+      - name: Upload SARIF (audit evidence)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: semgrep-sarif-${{ github.run_id }}
+          path: semgrep.sarif
+          retention-days: 90
+          if-no-files-found: warn

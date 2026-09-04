@@ -1,0 +1,22 @@
+# Compiler files
+cache/
+out/
+docs/plans/
+docs/specs/
+
+# Foundry broadcast logs. Deployment records live in the README, not here.
+broadcast/
+
+# Dotenv file
+.env
+
+# Git worktrees
+.worktrees/
+
+# Semgrep: rules cache (fetched at scan time, never vendored — see
+# .github/scripts/security-scan.sh) and local scan output
+.semgrep-rules/
+semgrep.sarif
+
+# macOS
+.DS_Store

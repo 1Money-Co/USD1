@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # This is a pure Foundry/Solidity project with no git submodules. Every npm lockfile
+  # (package-lock.json, yarn.lock) lives inside a vendored upstream library under lib/
+  # and is never installed or executed in our build pipeline. Register npm with an
+  # open-PR limit of 0 and ignore everything so Dependabot neither opens PRs nor
+  # raises alerts for them.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"

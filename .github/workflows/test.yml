@@ -1,0 +1,53 @@
+name: TEST-CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Foundry project
+    runs-on: ubuntu-latest
+    steps:
+      # No submodule handling: every dependency is vendored under lib/.
+      - uses: actions/checkout@v7
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Show Forge version
+        run: |
+          forge --version
+
+      - name: Run Forge fmt
+        run: |
+          forge fmt --check
+        id: fmt
+
+      - name: Set up Node for upgrade validation
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+
+      - name: Run Forge build
+        run: |
+          forge build --sizes
+        id: build
+
+      - name: Validate USD1 upgrade safety
+        run: |
+          # The two allowances are inherent to M0's extension pattern: MExtension fixes the
+          # M token and SwapFacility as immutables in the constructor. Do not add more
+          # without recording why here. Requires the full compilation from the build step.
+          npx --yes @openzeppelin/upgrades-core@1.37.0 validate out/build-info \
+            --contract src/v1/USD1.sol:USD1 \
+            --unsafeAllow constructor,state-variable-immutable
+        id: upgrade-safety
+
+      - name: Run Forge tests
+        run: |
+          forge test -vvv
+        id: test

@@ -1,0 +1,7 @@
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+evm-m-extensions/=lib/evm-m-extensions/
+forge-std/=lib/forge-std/src/
+openzeppelin-contracts/=lib/openzeppelin-contracts/
+openzeppelin-contracts-upgradeable/=lib/evm-m-extensions/lib/common/lib/openzeppelin-contracts-upgradeable/
+openzeppelin-foundry-upgrades/=lib/evm-m-extensions/lib/openzeppelin-foundry-upgrades/src/
+lib/evm-m-extensions/:@openzeppelin/contracts-upgradeable/=lib/evm-m-extensions/lib/common/lib/openzeppelin-contracts-upgradeable/contracts/
