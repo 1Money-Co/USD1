@@ -203,27 +203,50 @@ docs/
 
 ### Ethereum Mainnet
 
-> Not yet deployed. Fill in after deployment and verification.
+Deployed on Ethereum mainnet (chain ID `1`) through Palisade external signing.
+The implementation, transparent proxy, and ProxyAdmin are verified on Etherscan;
+the proxy is linked to the `USD1` implementation from `src/v1/USD1.sol`.
 
 | Contract | Address |
 |----------|---------|
-| **USD1 Extension** (proxy — use this) | _pending_ |
-| Implementation | _pending_ |
-| ProxyAdmin | _pending_ |
+| **USD1 Extension** (proxy — use this) | [`0xfEa9182A59861Eb4a8c9a808304a4E8b67932f11`](https://etherscan.io/address/0xfEa9182A59861Eb4a8c9a808304a4E8b67932f11#code) |
+| Implementation (`USD1`) | [`0xe5ef1269c11426d3E9965588236f2be54c9B3A48`](https://etherscan.io/address/0xe5ef1269c11426d3E9965588236f2be54c9B3A48#code) |
+| ProxyAdmin | [`0x0618bBfC551C7f29848a131269C165A59AbD86d2`](https://etherscan.io/address/0x0618bBfC551C7f29848a131269C165A59AbD86d2#code) |
 
 Token config: name `1Money USD1`, symbol `USD1`, decimals `6`.
 
+#### Release Transactions (Mainnet)
+
+Both transactions were sent by deployer
+[`0x0543b6fbf0855d601eBe9d430e3a49f2f035e2FB`](https://etherscan.io/address/0x0543b6fbf0855d601eBe9d430e3a49f2f035e2FB)
+and confirmed successfully.
+
+| Transaction | Nonce | Block | Hash |
+|-------------|-------|-------|------|
+| TX1 — deploy USD1 implementation | `0` | `25940044` | [`0x8076991fcd44dfb04867ff4c2780ca6095314e0b3fd49dd0cba4cf61d057600c`](https://etherscan.io/tx/0x8076991fcd44dfb04867ff4c2780ca6095314e0b3fd49dd0cba4cf61d057600c) |
+| TX2 — deploy and initialize proxy via CreateX CREATE3 | `1` | `25940115` | [`0xfad8140eb59b8e51862b402fd77779f7fc2b543aa2e1415552301700f1500f9e`](https://etherscan.io/tx/0xfad8140eb59b8e51862b402fd77779f7fc2b543aa2e1415552301700f1500f9e) |
+
+TX2 calls CreateX at `0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed` and initializes
+the proxy atomically. These release transactions have consumed nonces `0` and `1`;
+their unsigned payloads must not be reused for another deployment.
+
 #### Role Assignments (Mainnet)
+
+Assignments at deployment, as encoded in TX2:
 
 | Role / Config | Address |
 |---------------|---------|
-| `DEFAULT_ADMIN_ROLE` | _pending_ |
-| `FREEZE_MANAGER_ROLE` | _pending_ |
-| `YIELD_RECIPIENT_MANAGER_ROLE` | _pending_ |
-| `PAUSER_ROLE` | _pending_ |
-| `FORCED_TRANSFER_MANAGER_ROLE` | _pending_ |
-| Yield Recipient / treasury (config, not a role) | _pending_ |
-| ProxyAdmin owner (controls upgrades) | _pending_ |
+| `DEFAULT_ADMIN_ROLE` | `0x0543b6fbf0855d601eBe9d430e3a49f2f035e2FB` |
+| `FREEZE_MANAGER_ROLE` | `0x0543b6fbf0855d601eBe9d430e3a49f2f035e2FB` |
+| `YIELD_RECIPIENT_MANAGER_ROLE` | `0xf70a1Ea3F554B3570b5Ef166Bd57d2c8fBB7330A` |
+| `PAUSER_ROLE` | `0x0543b6fbf0855d601eBe9d430e3a49f2f035e2FB` |
+| `FORCED_TRANSFER_MANAGER_ROLE` | `0x0543b6fbf0855d601eBe9d430e3a49f2f035e2FB` |
+| Yield Recipient / treasury (config, not a role) | `0xf70a1Ea3F554B3570b5Ef166Bd57d2c8fBB7330A` |
+| ProxyAdmin owner (controls upgrades) | `0x0543b6fbf0855d601eBe9d430e3a49f2f035e2FB` |
+
+The treasury and yield manager use the same address in this release. M0 earner
+approval, SwapFacility listing, and enabling earning are separate from these
+deployment transactions; see [Post-deployment prerequisites](#post-deployment-prerequisites).
 
 ### M0 Protocol Contracts (Mainnet)
 
