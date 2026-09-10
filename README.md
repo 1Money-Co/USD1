@@ -91,7 +91,7 @@ The contract uses OpenZeppelin's `AccessControl`. All roles are assigned at init
 
 ### Prerequisites
 
-- [Foundry](https://book.getfoundry.sh/getting-started/installation) (tested with v1.5.1)
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) v1.5.1 (used for the mainnet release and pinned in CI)
 - Node 20+ for the upgrade-safety validator (`npx`)
 - [Semgrep CE](https://semgrep.dev/) for the security scan
 
@@ -215,24 +215,9 @@ the proxy is linked to the `USD1` implementation from `src/v1/USD1.sol`.
 
 Token config: name `1Money USD1`, symbol `USD1`, decimals `6`.
 
-#### Release Transactions (Mainnet)
-
-Both transactions were sent by deployer
-[`0x0543b6fbf0855d601eBe9d430e3a49f2f035e2FB`](https://etherscan.io/address/0x0543b6fbf0855d601eBe9d430e3a49f2f035e2FB)
-and confirmed successfully.
-
-| Transaction | Nonce | Block | Hash |
-|-------------|-------|-------|------|
-| TX1 — deploy USD1 implementation | `0` | `25940044` | [`0x8076991fcd44dfb04867ff4c2780ca6095314e0b3fd49dd0cba4cf61d057600c`](https://etherscan.io/tx/0x8076991fcd44dfb04867ff4c2780ca6095314e0b3fd49dd0cba4cf61d057600c) |
-| TX2 — deploy and initialize proxy via CreateX CREATE3 | `1` | `25940115` | [`0xfad8140eb59b8e51862b402fd77779f7fc2b543aa2e1415552301700f1500f9e`](https://etherscan.io/tx/0xfad8140eb59b8e51862b402fd77779f7fc2b543aa2e1415552301700f1500f9e) |
-
-TX2 calls CreateX at `0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed` and initializes
-the proxy atomically. These release transactions have consumed nonces `0` and `1`;
-their unsigned payloads must not be reused for another deployment.
-
 #### Role Assignments (Mainnet)
 
-Assignments at deployment, as encoded in TX2:
+Assignments at deployment:
 
 | Role / Config | Address |
 |---------------|---------|
@@ -260,13 +245,38 @@ deployment transactions; see [Post-deployment prerequisites](#post-deployment-pr
 
 ### Sepolia
 
-> Not yet deployed. Fill in after deployment and verification.
+Deployed on Ethereum Sepolia (chain ID `11155111`). Token config: name
+`1Money USD1`, symbol `USD1`, decimals `6`.
 
 | Contract | Address |
 |----------|---------|
-| USD1 Extension | _pending_ |
-| Implementation | _pending_ |
-| ProxyAdmin | _pending_ |
+| **USD1 Extension** (proxy — use this) | [`0xa3f3b8e2a27A65223df47BC9a6c11bc0fc08587A`](https://sepolia.etherscan.io/address/0xa3f3b8e2a27A65223df47BC9a6c11bc0fc08587A) |
+| Implementation (`USD1`) | [`0x0FFcb2dcc9A40C32cD0b77538DCfa4f3Cd18a912`](https://sepolia.etherscan.io/address/0x0FFcb2dcc9A40C32cD0b77538DCfa4f3Cd18a912) |
+| ProxyAdmin | [`0x59c96AB3F926FbD6D31F95dEbDc9c34ace74c1B4`](https://sepolia.etherscan.io/address/0x59c96AB3F926FbD6D31F95dEbDc9c34ace74c1B4) |
+
+Deployment transactions: [implementation (nonce 0)](https://sepolia.etherscan.io/tx/0x9e28dd4956c7c44ae697b9a49795e18ddf40dd2574d6079b0315b0bc509a5403)
+and [proxy deployment and initialization (nonce 1)](https://sepolia.etherscan.io/tx/0x54469b679e5ff79f7db6e7b4ad1df70690dc58af03d3a31d53fc040b49ab195e).
+Both transactions were confirmed successfully.
+
+#### Sepolia Accounts and Roles
+
+On-chain roles and configuration checked on 2026-09-10:
+
+| Role / Config | Address |
+|---------------|---------|
+| Deployer / owner / ProxyAdmin owner | `0x8b2118Cc61021bc0697C621aD8c90248ce62Fe19` |
+| `DEFAULT_ADMIN_ROLE` | `0x8b2118Cc61021bc0697C621aD8c90248ce62Fe19` |
+| `FREEZE_MANAGER_ROLE` | `0x8b2118Cc61021bc0697C621aD8c90248ce62Fe19` |
+| `YIELD_RECIPIENT_MANAGER_ROLE` | `0x8b2118Cc61021bc0697C621aD8c90248ce62Fe19` |
+| `PAUSER_ROLE` | `0x8b2118Cc61021bc0697C621aD8c90248ce62Fe19` |
+| `FORCED_TRANSFER_MANAGER_ROLE` | `0x8b2118Cc61021bc0697C621aD8c90248ce62Fe19` |
+| Yield account / treasury (`yieldRecipient()`) | `0xFe62DBA60b2465F8876064289eE6370119994613` |
+| Sepolia minter account (provided configuration) | `0x126a80F7E38d99aFb23390590F6D24F9E7516135` |
+| SwapFacility contract (`swapFacility()`) | `0xB6807116b3B1B321a390594e31ECD6e0076f6278` |
+
+The Sepolia yield account receives yield; the owner currently holds the on-chain
+role that manages and claims it. The supplied Sepolia minter account is separate
+from the SwapFacility contract returned by USD1's `swapFacility()` getter.
 
 ### M0 Protocol Contracts (Testnet)
 

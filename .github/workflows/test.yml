@@ -9,14 +9,36 @@ jobs:
   check:
     name: Foundry project
     runs-on: ubuntu-latest
+    env:
+      # Match the toolchain used for the verified USD1 mainnet release.
+      FOUNDRY_VERSION: v1.5.1
+      # Official linux_amd64 release asset digest; update together with the version.
+      # https://api.github.com/repos/foundry-rs/foundry/releases/tags/v1.5.1
+      FOUNDRY_LINUX_AMD64_SHA256: 73640b01bd9ed29fdb4965085099371f8cf0dbbec3e2086cf54564efc4dcfe88
     steps:
       # No submodule handling: every dependency is vendored under lib/.
       - uses: actions/checkout@v7
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_OS" = Linux
+          test "$RUNNER_ARCH" = X64
+
+          # Download the release directly: foundryup's attestation endpoint returns 5xx.
+          # Verify against the pinned release digest before extracting any executables.
+          foundry_archive="$RUNNER_TEMP/foundry-${FOUNDRY_VERSION}-linux-amd64.tar.gz"
+          foundry_bin="$RUNNER_TEMP/foundry-${FOUNDRY_VERSION}/bin"
+          curl --fail --location --silent --show-error \
+            --retry 3 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 15 --max-time 180 \
+            "https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}/foundry_${FOUNDRY_VERSION}_linux_amd64.tar.gz" \
+            --output "$foundry_archive"
+          printf '%s  %s\n' "$FOUNDRY_LINUX_AMD64_SHA256" "$foundry_archive" | sha256sum -c -
+          mkdir -p "$foundry_bin"
+          tar -xzf "$foundry_archive" -C "$foundry_bin" forge cast anvil chisel
+          echo "$foundry_bin" >> "$GITHUB_PATH"
 
       - name: Show Forge version
         run: |
