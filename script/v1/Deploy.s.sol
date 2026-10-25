@@ -192,7 +192,13 @@ contract Deploy is Script, DeployHelpers {
     /// @dev Deploy the proxy contract via CREATE3
     function _deployProxy(address implementation_, address deployer_) internal returns (address proxy) {
         // Get role addresses
-        address admin = vm.envOr("ADMIN_ADDRESS", deployer_);
+        _requireMainnetComplianceRoles();
+
+        address admin = vm.envOr("ADMIN_ADDRESS", address(0));
+        if (admin == address(0)) {
+            console.log("WARNING: ADMIN_ADDRESS is not set; falling back to the deployer for the admin role");
+            admin = deployer_;
+        }
         address yieldRecipient = _getAddress("YIELD_RECIPIENT_ADDRESS", "YIELD_RECIPIENT_PRIVATE_KEY", deployer_);
         address yieldRecipientManager =
             _getAddress("YIELD_RECIPIENT_MANAGER_ADDRESS", "YIELD_RECIPIENT_MANAGER_PRIVATE_KEY", yieldRecipient);
@@ -272,7 +278,13 @@ contract Deploy is Script, DeployHelpers {
         returns (bytes32 salt, bytes memory initCode, bytes memory initializerData)
     {
         // Get role addresses
-        address admin = vm.envOr("ADMIN_ADDRESS", deployer_);
+        _requireMainnetComplianceRoles();
+
+        address admin = vm.envOr("ADMIN_ADDRESS", address(0));
+        if (admin == address(0)) {
+            console.log("WARNING: ADMIN_ADDRESS is not set; falling back to the deployer for the admin role");
+            admin = deployer_;
+        }
         address yieldRecipient = _getAddress("YIELD_RECIPIENT_ADDRESS", "YIELD_RECIPIENT_PRIVATE_KEY", deployer_);
         address yieldRecipientManager =
             _getAddress("YIELD_RECIPIENT_MANAGER_ADDRESS", "YIELD_RECIPIENT_MANAGER_PRIVATE_KEY", yieldRecipient);
@@ -303,6 +315,32 @@ contract Deploy is Script, DeployHelpers {
         );
     }
 
+    /// @dev Reverting helper for mainnet deployments: silences the fallback chain on purpose, because
+    ///      silently granting compliance roles to the deployer EOA would be a security mistake.
+    function _requireMainnetComplianceRoles() internal view {
+        // Only Ethereum mainnet requires explicit role configuration; testnet and dev
+        // deployments keep the permissive fallback behavior.
+        if (block.chainid != 1) return;
+
+        _requireRoleEnvSet("YIELD_RECIPIENT_ADDRESS", "YIELD_RECIPIENT_PRIVATE_KEY");
+        _requireRoleEnvSet("YIELD_RECIPIENT_MANAGER_ADDRESS", "YIELD_RECIPIENT_MANAGER_PRIVATE_KEY");
+        _requireRoleEnvSet("FREEZE_MANAGER_ADDRESS", "FREEZER_PRIVATE_KEY");
+        _requireRoleEnvSet("PAUSER_ADDRESS", "PAUSER_PRIVATE_KEY");
+        _requireRoleEnvSet("FORCED_TRANSFER_MANAGER_ADDRESS", "FORCED_TRANSFER_MANAGER_PRIVATE_KEY");
+    }
+
+    /// @dev Reverting helper for a single compliance role: require the ADDRESS variable or its
+    ///      matching PRIVATE_KEY variable to be set explicitly, otherwise revert naming the variable.
+    function _requireRoleEnvSet(string memory addrEnvKey_, string memory pkEnvKey_) internal view {
+        bool addressSet = vm.envOr(addrEnvKey_, address(0)) != address(0);
+        bool privateKeySet = vm.envOr(pkEnvKey_, uint256(0)) != 0;
+
+        require(
+            addressSet || privateKeySet,
+            string.concat("Mainnet deployment requires ", addrEnvKey_, " (or ", pkEnvKey_, ") to be set explicitly")
+        );
+    }
+
     /// @dev Get deployer address from env
     function _getDeployer() internal view returns (address) {
         uint256 ownerPk = vm.envOr("OWNER_PRIVATE_KEY", uint256(0));
@@ -330,7 +368,10 @@ contract Deploy is Script, DeployHelpers {
             return vm.addr(pk);
         }
 
-        // Fallback
+        // Fallback is used; log a warning so operators notice a role silently resolving to it.
+        console.log(
+            string.concat("WARNING: neither ", addrEnvKey, " nor ", pkEnvKey, " is set; falling back to "), fallback_
+        );
         return fallback_;
     }
 }

@@ -10,6 +10,11 @@ import {MYieldToOneForcedTransfer} from "evm-m-extensions/src/projects/yieldToOn
  *         Includes force transfer functionality for compliance.
  */
 contract USD1 is MYieldToOneForcedTransfer {
+    /* ============ Custom Errors ============ */
+
+    /// @notice Thrown when the disabled legacy initializer entry point is called.
+    error DisabledInitializer();
+
     /* ============ Constructor ============ */
 
     /**
@@ -19,6 +24,24 @@ contract USD1 is MYieldToOneForcedTransfer {
      * @param  swapFacility_ The address of Swap Facility.
      */
     constructor(address mToken_, address swapFacility_) MYieldToOneForcedTransfer(mToken_, swapFacility_) {}
+
+    /* ============ Initializer ============ */
+
+    /**
+     * @notice Disables the legacy seven-parameter `initialize` inherited from `MYieldToOne`.
+     * @dev    The sole initializer of the deployed proxy is the eight-parameter `initialize` from
+     *         `MYieldToOneForcedTransfer`. Leaving the stale seven-parameter overload exposed on
+     *         the proxy would let a malicious actor front-run initialization after a manual
+     *         mis-deployment, so it unconditionally reverts.
+     */
+    function initialize(string memory, string memory, address, address, address, address, address)
+        public
+        virtual
+        override
+        initializer
+    {
+        revert DisabledInitializer();
+    }
 
     /* ============ Internal Functions ============ */
 
